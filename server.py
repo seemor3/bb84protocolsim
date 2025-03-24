@@ -2,6 +2,7 @@ import socket
 import threading
 
 clients = {}  # Dictionary to store connected clients with their roles
+start_sent = False  # Flag to track if the "START" signal has been sent
 
 def handle_client(client_socket, role):
     """Handles communication between Alice and Bob."""
@@ -12,25 +13,27 @@ def handle_client(client_socket, role):
                 break
             print(f"Received bit from {role}: {bit}")
 
-            # Forward the bit to the other client
+            # Forward the bit to the other clients
             for client_role, client in clients.items():
                 if client != client_socket:
-                    client.sendall(bit.encode())
-        except:
+                    try:
+                        client.sendall(bit.encode())
+                    except BrokenPipeError:
+                        print(f"Connection to {client_role} lost.")
+                        del clients[client_role]
+                        client.close()
+        except Exception as e:
+            print(f"An error occurred with {role}: {e}")
             break
     
     del clients[role]
     client_socket.close()
 
-def start_server():
-    """Sets up the server."""
-    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server.bind(("127.0.0.1", 8080))
-    server.listen(3) # Listens for up to 3 to include the presence of Eve
-    print("Server is running...")
-    
-    while len(clients) < 2:  # Wait for Alice and Bob to connect
-        client_socket, addr = server.accept()
+def accept_clients(server_socket):
+    """Accepts new clients and assigns roles."""
+    global start_sent
+    while True:
+        client_socket, addr = server_socket.accept()
         print(f"Client connected from {addr}.")
         
         # Ask the client for their role
@@ -45,10 +48,26 @@ def start_server():
         print(f"{role} connected.")
         clients[role] = client_socket
         threading.Thread(target=handle_client, args=(client_socket, role)).start()
+        
+        # Send "START" only to Alice if both Alice and Bob are connected
+        if 'Alice' in clients and 'Bob' in clients and not start_sent:
+            clients['Alice'].sendall("START".encode())
+            start_sent = True
+
+def start_server():
+    """Sets up the server."""
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.bind(("127.0.0.1", 8080))
+    server.listen(3) # Listens for up to 3 to include the presence of Eve
+    print("Server is running...")
     
-    print("Both clients connected. Ready for communication.")
-    # Send "START" only to Alice
-    if 'Alice' in clients:
-        clients['Alice'].sendall("START".encode())
+    threading.Thread(target=accept_clients, args=(server,), daemon=True).start()
+    
+    try:
+        while True:
+            pass  # Keep the main thread alive
+    except KeyboardInterrupt:
+        print("Shutting down server.")
+        server.close()
 
 start_server()

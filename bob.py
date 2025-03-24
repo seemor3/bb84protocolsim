@@ -13,16 +13,19 @@ def start_bob():
     try:
         while True:
             bit = bob_socket.recv(1024).decode()
-            if not bit or bit=="ROLE":
+            if not bit:
                 break
             if bit == "ROLE?":
-                # Send role to the server
+                # Acknowledge the role request without printing
                 bob_socket.sendall("Bob".encode())
                 continue
             print(f"Bob received bit: {bit}")
     except KeyboardInterrupt:
         print("Bob interrupted communication.")
+    except Exception as e:
+        print(f"An error occurred: {e}")
     finally:
         bob_socket.close()
+        print("Connection closed.")
 
 start_bob()

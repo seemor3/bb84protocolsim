@@ -23,7 +23,6 @@ def start_alice():
     try:
         # Wait for the start signal from the server
         start_signal = alice_socket.recv(1024).decode()
-        # print(f"Received start signal: {start_signal}")
         if start_signal == "START":
             print("Bob has connected. Starting communication...")
             while True:
@@ -32,6 +31,9 @@ def start_alice():
                     print(f"Alice sent: {bit}")
                     alice_socket.sendall(bit.encode())
                     time.sleep(1)  # Add a delay to simulate time between sending bits
+                except BrokenPipeError:
+                    print("Connection lost. Exiting.")
+                    break
                 except Exception as e:
                     print(f"An error occurred in the loop: {e}")
                     break
