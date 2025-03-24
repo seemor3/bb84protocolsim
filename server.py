@@ -8,7 +8,7 @@ def handle_client(client_socket, role):
     """Handles communication between Alice and Bob."""
     while True:
         try:
-            bit = client_socket.recv(1024).decode()
+            bit = client_socket.recv(1024)
             if not bit:
                 break
             print(f"Received bit from {role}: {bit}")
@@ -17,7 +17,7 @@ def handle_client(client_socket, role):
             for client_role, client in clients.items():
                 if client != client_socket:
                     try:
-                        client.sendall(bit.encode())
+                        client.sendall(bit)
                     except BrokenPipeError:
                         print(f"Connection to {client_role} lost.")
                         del clients[client_role]
@@ -45,8 +45,8 @@ def accept_clients(server_socket):
             client_socket.close()
             continue
         
-        print(f"{role} connected.")
         clients[role] = client_socket
+        print(f"{role} connected.")
         threading.Thread(target=handle_client, args=(client_socket, role)).start()
         
         # Send "START" only to Alice if both Alice and Bob are connected

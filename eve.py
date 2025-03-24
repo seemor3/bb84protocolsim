@@ -12,14 +12,14 @@ def start_eve():
 
     try:
         while True:
-            bit = eve_socket.recv(1024).decode()
+            bit = eve_socket.recv(1024)
             if not bit:
                 break
-            if bit == "ROLE?":
+            if bit == b"ROLE?":
                 # Send role to the server
                 eve_socket.sendall("Eve".encode())
                 continue
-            print(f"Eve received bit: {bit}")
+            print(f"Eve received encrypted bit: {bit}")
     except KeyboardInterrupt:
         print("Eve interrupted communication.")
     finally:

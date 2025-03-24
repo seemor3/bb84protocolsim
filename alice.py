@@ -1,16 +1,30 @@
 import socket
 import random
 import time
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.primitives import padding
+from cryptography.hazmat.backends import default_backend
 
 def generate_random_bit():
     """Generates a random bit (0 or 1)."""
     return str(random.randint(0, 1))
+
+def encrypt_message(message, key, iv):
+    padder = padding.PKCS7(128).padder()
+    padded_data = padder.update(message.encode()) + padder.finalize()
+    cipher = Cipher(algorithms.AES(key), modes.CBC(iv), backend=default_backend())
+    encryptor = cipher.encryptor()
+    encrypted_message = encryptor.update(padded_data) + encryptor.finalize()
+    return encrypted_message
 
 def start_alice():
     
     # server configuration
     server_host = "127.0.0.1"
     server_port = 8080
+
+    key = b'0123456789abcdef'  # 16-byte key for AES-128
+    iv = b'abcdef9876543210'   # 16-byte IV for AES
 
     alice_socket = socket.socket()
     alice_socket.connect((server_host, server_port))
@@ -29,7 +43,8 @@ def start_alice():
                 try:
                     bit = generate_random_bit()  # Alice sends a single random bit
                     print(f"Alice sent: {bit}")
-                    alice_socket.sendall(bit.encode())
+                    encrypted_bit = encrypt_message(bit, key, iv)
+                    alice_socket.sendall(encrypted_bit)
                     time.sleep(1)  # Add a delay to simulate time between sending bits
                 except BrokenPipeError:
                     print("Connection lost. Exiting.")
