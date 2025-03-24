@@ -1,25 +1,25 @@
 import socket
 import threading
 
-clients = []  # List to store connected clients
+clients = {}  # Dictionary to store connected clients with their roles
 
-def handle_client(client_socket):
+def handle_client(client_socket, role):
     """Handles communication between Alice and Bob."""
     while True:
         try:
             bit = client_socket.recv(1024).decode()
             if not bit:
                 break
-            print(f"Received bit: {bit}")
+            print(f"Received bit from {role}: {bit}")
 
             # Forward the bit to the other client
-            for client in clients:
+            for client_role, client in clients.items():
                 if client != client_socket:
                     client.sendall(bit.encode())
         except:
             break
     
-    clients.remove(client_socket)
+    del clients[role]
     client_socket.close()
 
 def start_server():
@@ -31,11 +31,24 @@ def start_server():
     
     while len(clients) < 2:  # Wait for Alice and Bob to connect
         client_socket, addr = server.accept()
-        print(f"Client {addr} connected.")
-        clients.append(client_socket)
-        threading.Thread(target=handle_client, args=(client_socket,)).start()
+        print(f"Client connected from {addr}.")
+        
+        # Ask the client for their role
+        client_socket.sendall("ROLE?".encode())
+        role = client_socket.recv(1024).decode()
+        
+        if role in clients:
+            print(f"Role {role} is already taken. Closing connection.")
+            client_socket.close()
+            continue
+        
+        print(f"{role} connected.")
+        clients[role] = client_socket
+        threading.Thread(target=handle_client, args=(client_socket, role)).start()
     
     print("Both clients connected. Ready for communication.")
-    for client in clients:
-        client.sendall("START".encode())
+    # Send "START" only to Alice
+    if 'Alice' in clients:
+        clients['Alice'].sendall("START".encode())
+
 start_server()
