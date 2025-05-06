@@ -1,47 +1,38 @@
 import socket
-from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-from cryptography.hazmat.primitives import padding
-from cryptography.hazmat.backends import default_backend
+import json
+import random
 
-def decrypt_message(encrypted_message, key, iv):
-    cipher = Cipher(algorithms.AES(key), modes.CBC(iv), backend=default_backend())
-    decryptor = cipher.decryptor()
-    padded_data = decryptor.update(encrypted_message) + decryptor.finalize()
-    unpadder = padding.PKCS7(128).unpadder()
-    data = unpadder.update(padded_data) + unpadder.finalize()
-    return data.decode()
+def measure(bit, a_basis, b_basis):
+    return bit if a_basis == b_basis else random.randint(0, 1)
 
 def start_bob():
-    
-    # server configuration
-    server_host = "127.0.0.1"
-    server_port = 8080
+    sock = socket.socket()
+    sock.connect(("127.0.0.1", 8080))
+    if sock.recv(1024).decode() == "ROLE?":
+        sock.sendall(b"Bob")
+    if sock.recv(1024).decode() == "START":
+        print("Connected to Alice. Starting BB84...")
 
-    key = b'0123456789abcdef'  # 16-byte key for AES-128
-    iv = b'abcdef9876543210'   # 16-byte IV for AES
+        measured = []
+        bob_bases = [random.randint(0,1) for _ in range(20)]
+        print("Bob's bases: ", bob_bases)
+        i = 0
 
-    bob_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    bob_socket.connect((server_host, server_port))
-    print("Bob connected to server.")
-    
-    # Send role to the server
-    role_request = bob_socket.recv(1024).decode()
-    if role_request == "ROLE?":
-        bob_socket.sendall("Bob".encode())  # Send Alice's role
-
-    try:
         while True:
-            encrypted_bit = bob_socket.recv(1024)
-            if not encrypted_bit:
+            msg = sock.recv(4096)
+            if not msg:
                 break
-            bit = decrypt_message(encrypted_bit, key, iv)
-            print(f"Bob received bit: {bit}")
-    except KeyboardInterrupt:
-        print("Bob interrupted communication.")
-    except Exception as e:
-        print(f"An error occurred: {e}")
-    finally:
-        bob_socket.close()
-        print("Connection closed.")
+            data = json.loads(msg.decode())
+            if data["type"] == "qubit":
+                bit = measure(data["bit"], data["basis"], bob_bases[i])
+                measured.append(bit)
+                i += 1
+            elif data["type"] == "basis_announcement":
+                sock.sendall(json.dumps({"type": "basis_announcement", "bases": bob_bases}).encode())
+                alice_bases = data["bases"]
+                sifted_key = [measured[j] for j in range(len(alice_bases)) if alice_bases[j] == bob_bases[j]]
+                print("Bob's raw key:", sifted_key)
+                break
+        sock.close()
 
 start_bob()
