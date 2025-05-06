@@ -4,8 +4,16 @@ import random
 import time
 
 def start_alice():
-    sock = socket.socket()
-    sock.connect(("127.0.0.1", 8080))
+    print("Waiting for connection to server...")
+    while True:
+        try:
+            sock = socket.socket()
+            sock.connect(("127.0.0.1", 8080))
+            break
+        except ConnectionRefusedError:
+            print("Server not available yet. Retrying in 1 second...")
+            time.sleep(1)
+            
     if sock.recv(1024).decode() == "ROLE?":
         sock.sendall(b"Alice")
     if sock.recv(1024).decode() == "START":
