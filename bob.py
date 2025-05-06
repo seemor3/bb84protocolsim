@@ -30,9 +30,17 @@ def start_bob():
             elif data["type"] == "basis_announcement":
                 sock.sendall(json.dumps({"type": "basis_announcement", "bases": bob_bases}).encode())
                 alice_bases = data["bases"]
-                sifted_key = [measured[j] for j in range(len(alice_bases)) if alice_bases[j] == bob_bases[j]]
-                print("Bob's raw key:", sifted_key)
+                print("Alice's bases: ", alice_bases)
+
+                sifted_key = []
+                print("\nSifting process (Bob):")
+                for j in range(len(alice_bases)):
+                    match = alice_bases[j] == bob_bases[j]
+                    print(f"Index {j}: Alice Basis = {alice_bases[j]}, Bob Basis = {bob_bases[j]} --> {'Match' if match else 'No match'}")
+                    if match:
+                        sifted_key.append(measured[j])
+
+                print("\nBob's raw key:", sifted_key)
                 break
         sock.close()
-
 start_bob()
