@@ -29,6 +29,7 @@ def accept_clients(server_socket):
             client_socket.close()
             continue
         clients[role] = client_socket
+        print(f"{role} has joined the server.")
         threading.Thread(target=handle_client, args=(client_socket, role), daemon=True).start()
         if 'Alice' in clients and 'Bob' in clients and not start_sent:
             clients['Alice'].sendall(b"START")
@@ -40,6 +41,9 @@ def start_server():
     server.bind(("127.0.0.1", 8080))
     server.listen()
     print("Server running on 127.0.0.1:8080")
-    accept_clients(server)
+    try:
+        accept_clients(server)
+    except KeyboardInterrupt:
+        print("\nServer closed.")
 
 start_server()
