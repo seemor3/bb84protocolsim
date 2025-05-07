@@ -35,6 +35,11 @@ def start_eve():
             if data.get("type") == "qubit":
                 eve_basis = random.randint(0, 1)
                 new_bit = measure(data["bit"], data["basis"], eve_basis)
+                print(
+                    f"Eve measures qubit: {data['bit']} with basis {data['basis']} → {new_bit} with basis {eve_basis}"
+                )
+                # Send the qubit to Bob with Eve's basis
+                # Note: In a real scenario, Eve might not send the qubit to Bob
                 out = {"type": "qubit", "bit": new_bit, "basis": data["basis"]}
             else:
                 out = data

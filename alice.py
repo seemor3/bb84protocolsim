@@ -76,6 +76,29 @@ def start_alice():
         print("\nAlice's raw key:", sifted_key)
         match_percentage = (len(sifted_key) / min_length) * 100
         print(f"\nPercentage of bits kept after sifting: {match_percentage:.2f}%")
-        sock.close()
+        
+        buffer = ""
+        while True:
+            chunk = sock.recv(4096).decode()
+            if not chunk:
+                break
+            buffer += chunk
+            while "\n" in buffer:
+                line, buffer = buffer.split("\n", 1)
+                if not line.strip():
+                    continue
+                msg = json.loads(line)
+                if msg.get("type") == "sample":
+                    idx       = msg["indices"]
+                    bob_bits  = msg["bits"]
+                    errors = sum(1 for k, b in zip(idx, bob_bits) if sifted_key[k] != b)
+                    error_pct = errors / len(idx) * 100 if idx else 0
+                    print(f"\nError-checking sample ({len(idx)} bits): "
+                        f"{errors} errors → {error_pct:.2f}%")
+                    if error_pct > 11:
+                        print(f"\nToo many errors. Key is compromised.")
+                    sock.close()
+                    return
 
-start_alice()
+if __name__ == "__main__":
+    start_alice()

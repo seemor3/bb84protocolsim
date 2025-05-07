@@ -78,19 +78,29 @@ def start_bob():
                 print("\nSifting process (Bob):")
                 for j in range(KEY_LEN):
                     match = alice_basis[j] == bob_bases[j]
-                    print(f"Index {j}: Alice {alice_basis[j]} vs Bob {bob_bases[j]} → {'Match' if match else 'No match'}")
+                    print(f"Index {j}: Alice Basis = {alice_basis[j]}, Bob Basis = {bob_bases[j]} --> {'Match' if match else 'No match'}")
                     if match:
                         sifted.append(measured_bits[j])
 
                 print("\nBob's raw key:", sifted)
                 pct = len(sifted) / KEY_LEN * 100
-                print(f"Percentage kept after sifting: {pct:.2f}%")
+                print(f"\nPercentage kept after sifting: {pct:.2f}%")
 
                 # send sifted key to Alice
-                sock.sendall((json.dumps({"type": "bob_raw_key", "key": sifted}) + "\n").encode())
+                #sock.sendall((json.dumps({"type": "bob_raw_key", "key": sifted}) + "\n").encode())
+                #sock.close()
+                #return
+                sample_size = max(1, len(sifted) // 4)
+                indices = random.sample(range(len(sifted)), sample_size)
+                sample_bits = [sifted[idx] for idx in indices]
+
+                sock.sendall((json.dumps({
+                    "type": "sample",
+                    "indices": indices,
+                    "bits": sample_bits
+                }) + "\n").encode())
                 sock.close()
                 return
-
 
 if __name__ == "__main__":
     start_bob()
