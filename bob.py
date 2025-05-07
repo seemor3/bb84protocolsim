@@ -29,7 +29,7 @@ def start_bob():
 
     print("Connected to Alice. Starting BB84…")
 
-    KEY_LEN = 20
+    KEY_LEN = 100
     bob_bases = [random.randint(0, 1) for _ in range(KEY_LEN)]
     print("Bob's bases:", bob_bases)
 

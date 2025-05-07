@@ -19,7 +19,7 @@ def start_alice():
     if sock.recv(1024).decode() == "START":
         print("Connected to Bob. Starting BB84...")
 
-        key_length = 20  # Length of the bits to form a key
+        key_length = 100  # Length of the bits to form a key
         bits = [random.randint(0, 1) for _ in range(key_length)]
         basis = [random.randint(0, 1) for _ in range(key_length)]
 
