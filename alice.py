@@ -21,25 +21,25 @@ def start_alice():
 
         key_length = 20
         bits = [random.randint(0,1) for _ in range(key_length)]
-        bases = [random.randint(0,1) for _ in range(key_length)]
+        basis = [random.randint(0,1) for _ in range(key_length)]
 
         print("Alice's bits: ", bits)
-        print("\nAlice's bases: ", bases)
+        print("\nAlice's basis: ", basis)
 
         for i in range(key_length):
-            msg = json.dumps({"type": "qubit", "bit": bits[i], "basis": bases[i]}).encode()
+            msg = json.dumps({"type": "qubit", "bit": bits[i], "basis": basis[i]}).encode()
             sock.sendall(msg)
             time.sleep(0.1)
-        # This compares the bases publicly to form the sifted key
-        sock.sendall(json.dumps({"type": "basis_announcement", "bases": bases}).encode())
-        bob_bases = json.loads(sock.recv(4096).decode())["bases"]
+        # This compares the basis publicly to form the sifted key
+        sock.sendall(json.dumps({"type": "basis_announcement", "basis": basis}).encode())
+        bob_basis = json.loads(sock.recv(4096).decode())["basis"]
 
-        print("Bob's bases: ", bob_bases)
+        print("Bob's basis: ", bob_basis)
         sifted_key = []
         print("\nSifting process (Alice):")
         for i in range(key_length):
-            match = bases[i] == bob_bases[i]
-            print(f"Index {i}: Alice Basis = {bases[i]}, Bob Basis = {bob_bases[i]} --> {'Match' if match else 'No match'}")
+            match = basis[i] == bob_basis[i]
+            print(f"Index {i}: Alice Basis = {basis[i]}, Bob Basis = {bob_basis[i]} --> {'Match' if match else 'No match'}")
             if match:
                 sifted_key.append(bits[i])
 

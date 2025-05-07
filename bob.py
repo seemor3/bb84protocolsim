@@ -22,8 +22,8 @@ def start_bob():
         print("Connected to Alice. Starting BB84...")
 
         measured = []
-        bob_bases = [random.randint(0,1) for _ in range(20)]
-        print("Bob's bases: ", bob_bases)
+        bob_basis = [random.randint(0,1) for _ in range(20)]
+        print("Bob's basis: ", bob_basis)
         i = 0
 
         while True:
@@ -32,19 +32,19 @@ def start_bob():
                 break
             data = json.loads(msg.decode())
             if data["type"] == "qubit":
-                bit = measure(data["bit"], data["basis"], bob_bases[i])
+                bit = measure(data["bit"], data["basis"], bob_basis[i])
                 measured.append(bit)
                 i += 1
             elif data["type"] == "basis_announcement":
-                sock.sendall(json.dumps({"type": "basis_announcement", "bases": bob_bases}).encode())
-                alice_bases = data["bases"]
-                print("Alice's bases: ", alice_bases)
+                sock.sendall(json.dumps({"type": "basis_announcement", "basis": bob_basis}).encode())
+                alice_basis = data["basis"]
+                print("Alice's basis: ", alice_basis)
 
                 sifted_key = []
                 print("\nSifting process (Bob):")
-                for j in range(len(alice_bases)):
-                    match = alice_bases[j] == bob_bases[j]
-                    print(f"Index {j}: Alice Basis = {alice_bases[j]}, Bob Basis = {bob_bases[j]} --> {'Match' if match else 'No match'}")
+                for j in range(len(alice_basis)):
+                    match = alice_basis[j] == bob_basis[j]
+                    print(f"Index {j}: Alice Basis = {alice_basis[j]}, Bob Basis = {bob_basis[j]} --> {'Match' if match else 'No match'}")
                     if match:
                         sifted_key.append(measured[j])
 
