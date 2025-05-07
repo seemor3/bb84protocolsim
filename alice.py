@@ -19,34 +19,63 @@ def start_alice():
     if sock.recv(1024).decode() == "START":
         print("Connected to Bob. Starting BB84...")
 
-        key_length = 100 #length of the bits to form a key
-        bits = [random.randint(0,1) for _ in range(key_length)]
-        basis = [random.randint(0,1) for _ in range(key_length)]
+        key_length = 20  # Length of the bits to form a key
+        bits = [random.randint(0, 1) for _ in range(key_length)]
+        basis = [random.randint(0, 1) for _ in range(key_length)]
 
         print("Alice's bits: ", bits)
         print("\nAlice's basis: ", basis)
 
         for i in range(key_length):
             msg = json.dumps({"type": "qubit", "bit": bits[i], "basis": basis[i]}).encode()
-            sock.sendall(msg)
-            time.sleep(0.1)
-        # This compares the basis publicly to form the sifted key
-        sock.sendall(json.dumps({"type": "basis_announcement", "basis": basis}).encode())
-        bob_basis = json.loads(sock.recv(4096).decode())["basis"]
+            sock.sendall(msg + b"\n")  # Add a newline delimiter
+            print(f"Sent qubit: {bits[i]} with basis {basis[i]}")
+            #time.sleep(1) # Simulate time delay for sending qubits
+
+        # Send basis announcement
+        try:
+            print("basis announcement sent: ", basis)
+            sock.sendall(json.dumps({"type": "basis_announcement", "basis": basis}).encode() + b"\n")
+        except BrokenPipeError:
+            print("Connection to server lost while sending basis announcement. Aborting.")
+            sock.close()
+            return
+
+        # Receive Bob's basis announcement
+        buffer = ""  # Initialize the buffer
+        while True:
+            try:
+                data = sock.recv(4096).decode()
+            except ConnectionResetError:
+                print("Connection reset by peer while waiting for basis announcement.")
+                sock.close()
+                return
+            buffer += data
+            while "\n" in buffer:
+                line, buffer = buffer.split("\n", 1)
+                if not line.strip():
+                    continue
+                response = json.loads(line)
+                if response.get("type") == "basis_announcement":
+                    bob_basis = response["basis"]
+                    break
+            else:
+                continue  # Continue outer while loop
+            break  # Break outer while loop if announcement received
 
         print("Bob's basis: ", bob_basis)
         sifted_key = []
         print("\nSifting process (Alice):")
-        for i in range(key_length):
+        min_length = min(len(basis), len(bob_basis))
+        for i in range(min_length):
             match = basis[i] == bob_basis[i]
             print(f"Index {i}: Alice Basis = {basis[i]}, Bob Basis = {bob_basis[i]} --> {'Match' if match else 'No match'}")
             if match:
                 sifted_key.append(bits[i])
 
         print("\nAlice's raw key:", sifted_key)
-        # print("len: ", len(sifted_key)) # Length of the key for debugging
-        match_percentage = (len(sifted_key) / key_length) * 100
-        print(f"\nPercentage of bits kept after sifting: {match_percentage:.2f}%") # Calculates the percentage of bits kept after sifting, used for detecting eavesdropper
+        match_percentage = (len(sifted_key) / min_length) * 100
+        print(f"\nPercentage of bits kept after sifting: {match_percentage:.2f}%")
         sock.close()
 
 start_alice()

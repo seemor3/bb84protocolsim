@@ -2,22 +2,76 @@ import socket
 import threading
 import json
 
-clients = {}  # Store clients by role
+clients = {}  # role → socket
 start_sent = False
 
-def handle_client(client_socket, role):
+def relay_from_eve():
+    """Background thread: read newline‑delimited JSON coming FROM Eve and
+    forward it to Bob (qubits/basis) or Alice (bob_raw_key)."""
+    eve = clients["Eve"]
+    buf = ""
     while True:
         try:
-            msg = client_socket.recv(4096)
-            if not msg:
-                break
-            for r, sock in clients.items():
-                if sock != client_socket:
-                    sock.sendall(msg)
-        except:
+            chunk = eve.recv(4096).decode()
+            if not chunk:
+                break  # Eve disconnected
+            buf += chunk
+            while "\n" in buf:
+                line, buf = buf.split("\n", 1)
+                if not line.strip():
+                    continue
+                # Simply relay depending on message type
+                try:
+                    data = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if data.get("type") in ("qubit", "basis_announcement"):
+                    if "Bob" in clients:
+                        clients["Bob"].sendall((line + "\n").encode())
+                elif data.get("type") == "bob_raw_key":
+                    if "Alice" in clients:
+                        clients["Alice"].sendall((line + "\n").encode())
+        except Exception:
             break
-    client_socket.close()
+    print("Eve relay thread terminating")
+
+
+def handle_client(sock, role):
+    buf = ""
+    while True:
+        try:
+            chunk = sock.recv(4096).decode()
+            if not chunk:
+                break
+            buf += chunk
+            while "\n" in buf:
+                line, buf = buf.split("\n", 1)
+                if not line.strip():
+                    continue
+                # parse for routing only (no modification)
+                try:
+                    data = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+
+                if role == "Alice":
+                    # send to Eve if present, else Bob
+                    target = clients.get("Eve") or clients.get("Bob")
+                    if target:
+                        target.sendall((line + "\n").encode())
+                elif role == "Bob":
+                    # Bob → Alice always
+                    if "Alice" in clients:
+                        clients["Alice"].sendall((line + "\n").encode())
+                elif role == "Eve":
+                    # Eve shouldn't reach here; relay thread handles her output
+                    pass
+        except Exception:
+            break
+    sock.close()
     del clients[role]
+    print(f"{role} disconnected.")
+
 
 def accept_clients(server_socket):
     global start_sent
@@ -30,20 +84,24 @@ def accept_clients(server_socket):
             continue
         clients[role] = client_socket
         print(f"{role} has joined the server.")
-        threading.Thread(target=handle_client, args=(client_socket, role), daemon=True).start()
+        if role == "Eve":
+            threading.Thread(target=relay_from_eve, daemon=True).start()
+        else:
+            threading.Thread(target=handle_client, args=(client_socket, role), daemon=True).start()
         if 'Alice' in clients and 'Bob' in clients and not start_sent:
             clients['Alice'].sendall(b"START")
             clients['Bob'].sendall(b"START")
             start_sent = True
 
+
 def start_server():
-    server = socket.socket()
-    server.bind(("127.0.0.1", 8080))
-    server.listen()
+    srv = socket.socket()
+    srv.bind(("127.0.0.1", 8080))
+    srv.listen()
     print("Server running on 127.0.0.1:8080")
     try:
-        accept_clients(server)
+        accept_clients(srv)
     except KeyboardInterrupt:
-        print("\nServer closed.")
+        print("Server closed.")
 
 start_server()

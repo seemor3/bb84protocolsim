@@ -3,55 +3,94 @@ import json
 import random
 import time
 
+
 def measure(bit, a_basis, b_basis):
+    """Return Bob’s measurement result (ideal channel, no detector error)."""
     return bit if a_basis == b_basis else random.randint(0, 1)
 
+
 def start_bob():
-    print("Waiting for connection to server...")
+    print("Waiting for connection to server…")
     while True:
         try:
             sock = socket.socket()
             sock.connect(("127.0.0.1", 8080))
             break
         except ConnectionRefusedError:
-            print("Server not available yet. Retrying in 1 second...")
+            print("Server not available yet. Retrying…")
             time.sleep(1)
+
     if sock.recv(1024).decode() == "ROLE?":
         sock.sendall(b"Bob")
-    if sock.recv(1024).decode() == "START":
-        print("Connected to Alice. Starting BB84...")
 
-        key_length = 100 #length of the bits to form a key
-        measured = []
-        bob_basis = [random.randint(0,1) for _ in range(key_length)]
-        print("Bob's basis: ", bob_basis)
-        i = 0
+    if sock.recv(1024).decode() != "START":
+        print("Did not receive START signal. Exiting.")
+        return
 
-        while True:
-            msg = sock.recv(4096)
-            if not msg:
-                break
-            data = json.loads(msg.decode())
+    print("Connected to Alice. Starting BB84…")
+
+    KEY_LEN = 20
+    bob_bases = [random.randint(0, 1) for _ in range(KEY_LEN)]
+    print("Bob's bases:", bob_bases)
+
+    measured_bits: list[int] = []
+    i = 0  # number of qubits measured
+    alice_basis_pending = None  # store Alice's basis list if it arrives early
+
+    while True:
+        chunk = sock.recv(4096)
+        if not chunk:
+            break
+        for line in chunk.decode().splitlines():
+            if not line.strip():
+                continue
+            try:
+                data = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+
+            # ──────────────────────────────────
             if data["type"] == "qubit":
-                bit = measure(data["bit"], data["basis"], bob_basis[i])
-                measured.append(bit)
-                i += 1
+                if i < KEY_LEN:
+                    measured_bits.append(
+                        measure(data["bit"], data["basis"], bob_bases[i])
+                    )
+                    i += 1
+                # if all qubits measured and we already have Alice's bases → sift now
+                if i >= KEY_LEN and alice_basis_pending is not None:
+                    alice_basis = alice_basis_pending
+                    alice_basis_pending = None  # clear so we sift once
+            # ──────────────────────────────────
             elif data["type"] == "basis_announcement":
-                sock.sendall(json.dumps({"type": "basis_announcement", "basis": bob_basis}).encode())
-                alice_basis = data["basis"]
-                print("Alice's basis: ", alice_basis)
+                if i < KEY_LEN:
+                    # Save and wait for remaining qubits
+                    alice_basis_pending = data["basis"]
+                    sock.sendall((json.dumps({"type": "basis_announcement", "basis": bob_bases}) + "\n").encode())
+                    continue
+                else:
+                    sock.sendall((json.dumps({"type": "basis_announcement", "basis": bob_bases}) + "\n").encode())
+                    alice_basis = data["basis"]
 
-                sifted_key = []
+            # ─── if both lists ready and i == KEY_LEN, perform sifting ───
+            if i >= KEY_LEN and alice_basis_pending is None and "alice_basis" in locals():
+                print("Alice's bases:", alice_basis)
+                sifted = []
                 print("\nSifting process (Bob):")
-                for j in range(len(alice_basis)):
-                    match = alice_basis[j] == bob_basis[j]
-                    print(f"Index {j}: Alice Basis = {alice_basis[j]}, Bob Basis = {bob_basis[j]} --> {'Match' if match else 'No match'}")
+                for j in range(KEY_LEN):
+                    match = alice_basis[j] == bob_bases[j]
+                    print(f"Index {j}: Alice {alice_basis[j]} vs Bob {bob_bases[j]} → {'Match' if match else 'No match'}")
                     if match:
-                        sifted_key.append(measured[j])
+                        sifted.append(measured_bits[j])
 
-                print("\nBob's raw key:", sifted_key)
-                break
-        match_percentage = (len(sifted_key) / key_length) * 100
-        print(f"\nPercentage of bits kept after sifting: {match_percentage:.2f}%")
-        sock.close()
-start_bob()
+                print("\nBob's raw key:", sifted)
+                pct = len(sifted) / KEY_LEN * 100
+                print(f"Percentage kept after sifting: {pct:.2f}%")
+
+                # send sifted key to Alice
+                sock.sendall((json.dumps({"type": "bob_raw_key", "key": sifted}) + "\n").encode())
+                sock.close()
+                return
+
+
+if __name__ == "__main__":
+    start_bob()
