@@ -19,7 +19,7 @@ def start_alice():
     if sock.recv(1024).decode() == "START":
         print("Connected to Bob. Starting BB84...")
 
-        key_length = 20
+        key_length = 100 #length of the bits to form a key
         bits = [random.randint(0,1) for _ in range(key_length)]
         basis = [random.randint(0,1) for _ in range(key_length)]
 
@@ -44,6 +44,9 @@ def start_alice():
                 sifted_key.append(bits[i])
 
         print("\nAlice's raw key:", sifted_key)
+        # print("len: ", len(sifted_key)) # Length of the key for debugging
+        match_percentage = (len(sifted_key) / key_length) * 100
+        print(f"\nPercentage of bits kept after sifting: {match_percentage:.2f}%") # Calculates the percentage of bits kept after sifting, used for detecting eavesdropper
         sock.close()
 
 start_alice()

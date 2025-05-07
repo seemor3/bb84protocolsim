@@ -21,8 +21,9 @@ def start_bob():
     if sock.recv(1024).decode() == "START":
         print("Connected to Alice. Starting BB84...")
 
+        key_length = 100 #length of the bits to form a key
         measured = []
-        bob_basis = [random.randint(0,1) for _ in range(20)]
+        bob_basis = [random.randint(0,1) for _ in range(key_length)]
         print("Bob's basis: ", bob_basis)
         i = 0
 
@@ -50,5 +51,7 @@ def start_bob():
 
                 print("\nBob's raw key:", sifted_key)
                 break
+        match_percentage = (len(sifted_key) / key_length) * 100
+        print(f"\nPercentage of bits kept after sifting: {match_percentage:.2f}%")
         sock.close()
 start_bob()
