@@ -10,14 +10,14 @@ I decided to use python to code my dissertation, using the sockets and threading
 
 The BB84 protocol is the first Quantum Key Distribution (QKD) scheme that allows 2 parties Alice and Bob to communicate securely over a network with a presence of an Eavesdropper. Alice and Bob create a secret key over an insecure channel using bits and basis.
 
-There are 2 basis: Rectilinear (+) and Diagonal (X) basis. *the + represents $\longleftrightarrow\hspace{-21mu}\updownarrow$ and the X represents ${\nearrow\hspace{-18mu}\swarrow}\hspace{-18mu}{\nwarrow\hspace{-18mu}\searrow}$*
+There are 2 basis: Rectilinear (+) and Diagonal (X) basis. the + represents $\longleftrightarrow\hspace{-21mu}\updownarrow$ and the X represents ${\nearrow\hspace{-18mu}\swarrow}\hspace{-18mu}{\nwarrow\hspace{-18mu}\searrow}$
 
 Bits to be used: 0 or 1.
 
 These bits are encoded using the basis chosen at random by Alice, and Bob then choses a random set of basis to determine what they think Alice says. 
 
 For example:
-- If Alice encodes a bit 0 using a rectilinear basis:$\longleftrightarrow\hspace{-21mu}\updownarrow\hspace{5pt}$ the polarisation will be $\leftrightarrow$ and similarly with a 1: $\updownarrow$
+- If Alice encodes a bit 0 using a rectilinear basis: $\longleftrightarrow\hspace{-21mu}\updownarrow\hspace{5pt}$ the polarisation will be $\leftrightarrow$ and similarly with a 1: $\updownarrow$
 - If Alice encodes a bit 0 using a diagonal basis ${\nearrow\hspace{-18mu}\swarrow}\hspace{-18mu}{\nwarrow\hspace{-18mu}\searrow}$ the polarisation will be: $\nearrow\hspace{-18mu}\swarrow$ and similarly with a 1: $\nwarrow\hspace{-18mu}\searrow$
 
 Bob will chose either basis at random and if any of the basis match, the bits that were used for that basis will be kept and formed into a bit.
