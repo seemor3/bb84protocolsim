@@ -1,8 +1,11 @@
 from fastapi import FastAPI, WebSocket
 from pydantic import BaseModel
 from typing import List
+from fastapi.staticfiles import StaticFiles
 
 app = FastAPI()
+
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 connected_clients: List[WebSocket] = []
 

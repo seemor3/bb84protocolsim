@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>BB84 Dashboard</title>
+</head>
+<body>
+    <h1>BB84 Dashboard</h1>
+    <div id="events"></div>
+
+    <script>
+        const ws = new WebSocket("ws://localhost:8000/ws");
+        const eventsDiv = document.getElementById("events");
+
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            const p = document.createElement("p");
+            p.textContent = JSON.stringify(data);
+            eventsDiv.appendChild(p);
+        };
+
+        ws.onopen = () => console.log("Connected to dashboard");
+        ws.onerror = (e) => console.log("WebSocket error", e);
+    </script>
+</body>
+</html>
