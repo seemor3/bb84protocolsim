@@ -18,7 +18,7 @@ def open_terminal(script_name):
     if system == "Darwin":  # macOS
         open_terminal_mac(script_name)
     elif system == "Linux":
-        subprocess.Popen(["gnome-terminal", "--", "bash", "-c", f"python3 '{os.path.join(base_dir, script_name)}'; exec bash"])
+        subprocess.Popen(["kitty", "--", "bash", "-c", f"python3 '{os.path.join(base_dir, script_name)}'; exec bash"])
     elif system == "Windows":
         subprocess.Popen(["cmd", "/c", f"start cmd /k python {os.path.join(base_dir, script_name)}"])
     else:
