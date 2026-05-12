@@ -1,43 +1,46 @@
-## BB84 Protocol Simulator
+# BB84 Protocol Simulator
 
-This project was designed while doing my Dissertation on a **'Software Simulation of a BB84 protocol'**
+This project was developed as part of my dissertation: **"Software Simulation of the BB84 Protocol."**
 
-### Project Overview
+## Project Overview
 
-I decided to use python to code my dissertation, using the sockets and threading library to simulate communication between 2 users: Bob and Alice and then the communication between these 2 users with the presence of an eavesdropper: Eve.
+I used **Python** to build this simulation, leveraging the `sockets` and `threading` libraries to facilitate communication between two users, **Alice** and **Bob**. The project also simulates the impact of an eavesdropper, **Eve**, on the quantum channel to demonstrate how QKD detects intrusion.
 
-#### How does BB84 protocol work?
+## How the BB84 Protocol Works
 
-The BB84 protocol is the first Quantum Key Distribution (QKD) scheme that allows 2 parties Alice and Bob to communicate securely over a network with a presence of an Eavesdropper. Alice and Bob create a secret key over an insecure channel using bits and basis.
+The BB84 protocol is the first Quantum Key Distribution (QKD) scheme. It allows two parties to create a shared secret key over an insecure channel. Alice and Bob use random bit strings and random bases to encode and decode information.
 
-There are 2 basis: Rectilinear (+) and Diagonal (X) basis. the + represents $\longleftrightarrow\hspace{-21mu}\updownarrow$ and the X represents ${\nearrow\hspace{-18mu}\swarrow}\hspace{-18mu}{\nwarrow\hspace{-18mu}\searrow}$
+### 1. The Bases
+There are two bases used for polarization. To represent these in a digital environment, we map them as follows:
 
-Bits to be used: 0 or 1.
+*   **Rectilinear Basis ($+$):** Composed of Horizontal ($\leftrightarrow$) and Vertical ($\updownarrow$) orientations.
+*   **Diagonal Basis ($\times$):** Composed of 45° ($\nearrow\kern-10pt\swarrow$) and 135° ($\nwarrow\kern-10pt\searrow$) orientations.
 
-These bits are encoded using the basis chosen at random by Alice, and Bob then choses a random set of basis to determine what they think Alice says. 
+### 2. Encoding Logic
+Alice chooses a random bit (**0** or **1**) and a random basis to determine the polarization of the photon sent.
 
-For example:
-- If Alice encodes a bit 0 using a rectilinear basis: $\longleftrightarrow\hspace{-21mu}\updownarrow\hspace{5pt}$ the polarisation will be $\leftrightarrow$ and similarly with a 1: $\updownarrow$
-- If Alice encodes a bit 0 using a diagonal basis ${\nearrow\hspace{-18mu}\swarrow}\hspace{-18mu}{\nwarrow\hspace{-18mu}\searrow}$ the polarisation will be: $\nearrow\hspace{-18mu}\swarrow$ and similarly with a 1: $\nwarrow\hspace{-18mu}\searrow$
+| Bit | Rectilinear ($+$) | Diagonal ($\times$) |
+| :--- | :---: | :---: |
+| **0** | $\leftrightarrow$ | $\nearrow\kern-10pt\swarrow$ |
+| **1** | $\updownarrow$ | $\nwarrow\kern-10pt\searrow$ |
 
-Bob will chose either basis at random and if any of the basis match, the bits that were used for that basis will be kept and formed into a bit.
-Any of the basis that don't match, those bits will be dropped 
+### 3. Key Exchange Simulation
+Bob chooses his own bases at random to measure Alice's photons. If their bases match, the bit is kept. If they don't, the bit is discarded (sifted).
 
-Here is a table below demonstrating how it works:
-| Step | Data | Bit 1 | Bit 2 | Bit 3 | Bit 4 | Bit 5 | Bit 6 |
-| :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-| **Alice** | Bit | 0 | 1 | 0 | 1 | 1 | 0 |
-| | Basis | $+$ | $\times$ | $+$ | $+$ | $\times$ | $\times$ |
-| | Photon | $\leftrightarrow$ | $\nwarrow\kern-11pt\searrow$ | $\leftrightarrow$ | $\updownarrow$ | $\nwarrow\kern-11pt\searrow$ | $\nearrow\kern-11pt\swarrow$ |
-| **Bob** | Basis | $+$ | $+$ | $+$ | $\times$ | $\times$ | $\times$ |
-| | Measure | $\leftrightarrow$ | $\updownarrow$ | $\leftrightarrow$ | $\nearrow\kern-11pt\swarrow$ | $\nwarrow\kern-11pt\searrow$ | $\nearrow\kern-11pt\swarrow$ |
-| **Result** | Sifting | ✅ | ❌ | ✅ | ❌ | ✅ | ✅ |
-| | **Key** | **0** | | **0** | | **1** | **0** |
+| Participant | Property | 1 | 2 | 3 | 4 | 5 | 6 | 7 |
+| :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **Alice** | **Key bit** | 0 | 1 | 1 | 0 | 0 | 1 | 0 |
+| | **Basis** | $+$ | $\times$ | $+$ | $+$ | $\times$ | $\times$ | $+$ |
+| | **Photon** | $\leftrightarrow$ | $\nwarrow\kern-10pt\searrow$ | $\updownarrow$ | $\leftrightarrow$ | $\nearrow\kern-10pt\swarrow$ | $\nwarrow\kern-10pt\searrow$ | $\leftrightarrow$ |
+| **Bob** | **Basis** | $\times$ | $\times$ | $+$ | $\times$ | $\times$ | $+$ | $+$ |
+| | **Measure** | $\nearrow\kern-10pt\swarrow$ | $\nwarrow\kern-10pt\searrow$ | $\updownarrow$ | $\nwarrow\kern-10pt\searrow$ | $\nearrow\kern-10pt\swarrow$ | $\updownarrow$ | $\leftrightarrow$ |
+| **Result** | **Sifting** | ❌ | ✅ | ✅ | ❌ | ✅ | ❌ | ✅ |
+| **Final Key** | | | **1** | **1** | | **0** | | **0** |
 
-This key here will be used for further communication between Alice and Bob.
+This final sifted key can then be used for encrypted communication using algorithms like AES or One-Time Pad.
 
-#### Dissertation Summary
+## Dissertation Summary
 
-The project was only created up until this point, while also showing how the presence of an eavesdropper disrupted the key formation process.
+The project demonstrates the core QKD process and illustrates how the presence of an eavesdropper (**Eve**) introduces errors. Because Eve cannot measure a photon without collapsing its state, her presence increases the **Quantum Bit Error Rate (QBER)**, which Alice and Bob detect during the public parity check, alerting them to the intrusion.
 
-Any further details post dissertation will be shown below, and in commits on here.
+Any further details post-dissertation will be shown below and in the repository commits.
