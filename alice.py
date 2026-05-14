@@ -30,8 +30,10 @@ async def start_alice():
             print("Alice's bits: ", bits)
             print("\nAlice's basis: ", basis)
 
+            # Send qubits to Bob
             for i in range(key_length):
                 msg = json.dumps({"type": "qubit", "bit": bits[i], "basis": basis[i]}).encode()
+                await ws.send(json.dumps({"role": "Alice", "type": "qubit_sent", "index": i, "bit": bits[i], "basis": basis[i]}))
                 sock.sendall(msg + b"\n")  # Add a newline delimiter
                 print(f"Sent qubit: {bits[i]} with basis {basis[i]}")
                 #time.sleep(1) # Simulate time delay for sending qubits
@@ -39,7 +41,7 @@ async def start_alice():
             # Send basis announcement
             try:
                 print("basis announcement sent: ", basis)
-                await ws.send(json.dumps({"role": "Alice", "type": "qubit_sent", "bit": bits[i], "basis": basis[i]}))
+                await ws.send(json.dumps({"role": "Alice", "type": "basis_announcement", "basis": basis}))
                 sock.sendall(json.dumps({"type": "basis_announcement", "basis": basis}).encode() + b"\n")
             except BrokenPipeError:
                 print("Connection to server lost while sending basis announcement. Aborting.")
@@ -67,20 +69,25 @@ async def start_alice():
                 else:
                     continue  # Continue outer while loop
                 break  # Break outer while loop if announcement received
-
+            
+            # Sifting process
             print("Bob's basis: ", bob_basis)
             sifted_key = []
             print("\nSifting process (Alice):")
             min_length = min(len(basis), len(bob_basis))
             for i in range(min_length):
                 match = basis[i] == bob_basis[i]
+                await ws.send(json.dumps({"role": "Alice", "type": "basis_match" if match else "basis_nomatch", "index": i}))
                 print(f"Index {i}: Alice Basis = {basis[i]}, Bob Basis = {bob_basis[i]} --> {'Match' if match else 'No match'}")
                 if match:
                     sifted_key.append(bits[i])
 
+            # Show sifting results
             print("\nAlice's raw key:", sifted_key)
             match_percentage = (len(sifted_key) / min_length) * 100
             print(f"\nPercentage of bits kept after sifting: {match_percentage:.2f}%")
+            await ws.send(json.dumps({"role": "Alice", "type": "sifting_complete", "sifted_length": len(sifted_key), "percentage": match_percentage}))
+            
             
             buffer = ""
             while True:
@@ -100,6 +107,9 @@ async def start_alice():
                         error_pct = errors / len(idx) * 100 if idx else 0
                         print(f"\nError-checking sample ({len(idx)} bits): "
                             f"{errors} errors → {error_pct:.2f}%")
+                            
+                        await ws.send(json.dumps({"role": "Alice", "type": "error_check", "errors": errors, "sample_size": len(idx), "error_pct": error_pct}))
+                        await ws.send(json.dumps({"role": "Alice", "type": "result", "safe": error_pct <= 11}))
                         if error_pct > 11:
                             print(f"\nToo many errors. Key is compromised.")
                         sock.close()

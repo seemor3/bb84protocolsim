@@ -1,5 +1,4 @@
 from fastapi import FastAPI, WebSocket
-from pydantic import BaseModel
 from typing import List
 from fastapi.staticfiles import StaticFiles
 
@@ -8,11 +7,6 @@ app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 connected_clients: List[WebSocket] = []
-
-'''class Item(BaseModel):
-    name: str
-    price: float
-    is_offer: bool | None = None'''
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
@@ -23,22 +17,13 @@ async def websocket_endpoint(websocket: WebSocket):
             data = await websocket.receive_text()
             for client in connected_clients:
                 if client != websocket:
-                    await client.send_text(f"Message from client: {data}")
+                    await client.send_text(data)
     except Exception as e:
         print(f"WebSocket error: {e}")
     finally:
         connected_clients.remove(websocket)
-'''
+
 @app.get("/")
-def read_root():
-    return {"Hello": "World"}
+async def get():
+    return {"message": "Welcome to the dashboard!"}
 
-
-@app.get("/items/{item_id}")
-def read_item(item_id: int, q: str | None = None):
-    return {"item_id": item_id, "q": q}
-
-
-@app.put("/items/{item_id}")
-def update_item(item_id: int, item: Item):
-    return {"item_name": item.name, "item_id": item_id}'''

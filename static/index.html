@@ -1,25 +1,405 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>BB84 Dashboard</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>BB84 Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@300;500;700&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg:        #080c10;
+      --surface:   #0d1117;
+      --border:    #1a2535;
+      --accent:    #00e5ff;
+      --green:     #00ff88;
+      --red:       #ff3d5a;
+      --amber:     #ffb300;
+      --dim:       #3a4a5c;
+      --text:      #c9d8e8;
+      --mono:      'Share Tech Mono', monospace;
+      --sans:      'Rajdhani', sans-serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      min-height: 100vh;
+      padding: 2rem;
+      background-image:
+        radial-gradient(ellipse at 20% 0%, rgba(0,229,255,0.04) 0%, transparent 60%),
+        radial-gradient(ellipse at 80% 100%, rgba(0,255,136,0.03) 0%, transparent 60%);
+    }
+
+    /* ── Header ── */
+    header {
+      display: flex;
+      align-items: baseline;
+      gap: 1.5rem;
+      margin-bottom: 2.5rem;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 1.25rem;
+    }
+    header h1 {
+      font-family: var(--mono);
+      font-size: 1.4rem;
+      color: var(--accent);
+      letter-spacing: 0.08em;
+      text-shadow: 0 0 18px rgba(0,229,255,0.4);
+    }
+    header span {
+      font-size: 0.85rem;
+      color: var(--dim);
+      font-family: var(--mono);
+    }
+    #status-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--dim);
+      display: inline-block;
+      margin-right: 0.5rem;
+      transition: background 0.3s, box-shadow 0.3s;
+    }
+    #status-dot.connected {
+      background: var(--green);
+      box-shadow: 0 0 8px var(--green);
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.5; }
+    }
+
+    /* ── Layout ── */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    @media (max-width: 700px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+
+    /* ── Stat cards ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 1.25rem 1.5rem;
+      position: relative;
+      overflow: hidden;
+    }
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+      opacity: 0.4;
+    }
+    .card-label {
+      font-size: 0.7rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--dim);
+      margin-bottom: 0.5rem;
+    }
+    .card-value {
+      font-family: var(--mono);
+      font-size: 2rem;
+      color: var(--accent);
+      line-height: 1;
+    }
+    .card-value.green { color: var(--green); text-shadow: 0 0 12px rgba(0,255,136,0.4); }
+    .card-value.red   { color: var(--red);   text-shadow: 0 0 12px rgba(255,61,90,0.4); }
+    .card-sub {
+      font-size: 0.75rem;
+      color: var(--dim);
+      margin-top: 0.4rem;
+      font-family: var(--mono);
+    }
+
+    /* ── Section titles ── */
+    .section-title {
+      font-size: 0.7rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--dim);
+      margin: 1.75rem 0 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .section-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* ── Sifting grid ── */
+    #sift-grid {
+      display: grid;
+      grid-template-columns: repeat(20, 1fr);
+      gap: 3px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 1rem;
+    }
+    .sq {
+      aspect-ratio: 1;
+      border-radius: 2px;
+      background: var(--border);
+      transition: background 0.2s, box-shadow 0.2s;
+    }
+    .sq.match {
+      background: var(--green);
+      box-shadow: 0 0 4px rgba(0,255,136,0.5);
+    }
+    .sq.nomatch {
+      background: var(--red);
+      box-shadow: 0 0 4px rgba(255,61,90,0.3);
+    }
+    .sq.sending {
+      background: var(--accent);
+      box-shadow: 0 0 6px rgba(0,229,255,0.7);
+      animation: flash 0.4s ease-out forwards;
+    }
+    @keyframes flash {
+      0%   { opacity: 1; }
+      100% { opacity: 0.3; background: var(--border); box-shadow: none; }
+    }
+
+    /* ── Legend ── */
+    .legend {
+      display: flex;
+      gap: 1.5rem;
+      margin-top: 0.6rem;
+      font-size: 0.72rem;
+      color: var(--dim);
+      font-family: var(--mono);
+    }
+    .legend span { display: flex; align-items: center; gap: 0.4rem; }
+    .dot { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }
+
+    /* ── Result banner ── */
+    #result-banner {
+      display: none;
+      margin-top: 1.5rem;
+      padding: 1.25rem 1.75rem;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      font-family: var(--mono);
+      font-size: 1.1rem;
+      letter-spacing: 0.05em;
+      animation: slideIn 0.4s ease-out;
+    }
+    @keyframes slideIn {
+      from { transform: translateY(8px); opacity: 0; }
+      to   { transform: translateY(0);   opacity: 1; }
+    }
+    #result-banner.safe {
+      background: rgba(0,255,136,0.07);
+      border-color: var(--green);
+      color: var(--green);
+    }
+    #result-banner.compromised {
+      background: rgba(255,61,90,0.07);
+      border-color: var(--red);
+      color: var(--red);
+    }
+
+    /* ── Event log ── */
+    #log {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.75rem 1rem;
+      height: 160px;
+      overflow-y: auto;
+      font-family: var(--mono);
+      font-size: 0.75rem;
+      color: var(--dim);
+    }
+    #log .entry { padding: 0.2rem 0; border-bottom: 1px solid rgba(255,255,255,0.03); }
+    #log .entry .ts { color: rgba(0,229,255,0.4); margin-right: 0.75rem; }
+    #log .entry.alice { color: #7ec8e3; }
+    #log .entry.bob   { color: #a8e6cf; }
+    #log .entry.eve   { color: #ffb3c1; }
+    #log .entry.sys   { color: var(--dim); }
+  </style>
 </head>
 <body>
-    <h1>BB84 Dashboard</h1>
-    <div id="events"></div>
 
-    <script>
-        const ws = new WebSocket("ws://localhost:8000/ws");
-        const eventsDiv = document.getElementById("events");
+<header>
+  <h1>⬡ BB84 PROTOCOL DASHBOARD</h1>
+  <span><span id="status-dot"></span><span id="status-text">disconnected</span></span>
+</header>
 
-        ws.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-            const p = document.createElement("p");
-            p.textContent = JSON.stringify(data);
-            eventsDiv.appendChild(p);
-        };
+<!-- Stats -->
+<div class="grid">
+  <div class="card">
+    <div class="card-label">Qubits Sent</div>
+    <div class="card-value" id="stat-qubits">0</div>
+    <div class="card-sub">of 100</div>
+  </div>
+  <div class="card">
+    <div class="card-label">Sifted Key Length</div>
+    <div class="card-value green" id="stat-sifted">—</div>
+    <div class="card-sub" id="stat-sifted-pct">awaiting sifting</div>
+  </div>
+  <div class="card">
+    <div class="card-label">Error Rate</div>
+    <div class="card-value" id="stat-error">—</div>
+    <div class="card-sub" id="stat-error-sub">threshold: 11%</div>
+  </div>
+</div>
 
-        ws.onopen = () => console.log("Connected to dashboard");
-        ws.onerror = (e) => console.log("WebSocket error", e);
-    </script>
+<!-- Sifting grid -->
+<div class="section-title">Basis Sifting — 100 Qubits</div>
+<div id="sift-grid"></div>
+<div class="legend">
+  <span><span class="dot" style="background:var(--green)"></span> Basis match (kept)</span>
+  <span><span class="dot" style="background:var(--red)"></span> Basis mismatch (discarded)</span>
+  <span><span class="dot" style="background:var(--accent)"></span> In transit</span>
+  <span><span class="dot" style="background:var(--border)"></span> Pending</span>
+</div>
+
+<!-- Result -->
+<div id="result-banner"></div>
+
+<!-- Log -->
+<div class="section-title">Event Log</div>
+<div id="log"></div>
+
+<script>
+  // ── Build sifting grid ──
+  const grid = document.getElementById('sift-grid');
+  const squares = [];
+  for (let i = 0; i < 100; i++) {
+    const sq = document.createElement('div');
+    sq.className = 'sq';
+    sq.title = `Qubit ${i}`;
+    grid.appendChild(sq);
+    squares.push(sq);
+  }
+
+  // ── State ──
+  let qubitCount = 0;
+
+  // ── DOM refs ──
+  const statQubits    = document.getElementById('stat-qubits');
+  const statSifted    = document.getElementById('stat-sifted');
+  const statSiftedPct = document.getElementById('stat-sifted-pct');
+  const statError     = document.getElementById('stat-error');
+  const statErrorSub  = document.getElementById('stat-error-sub');
+  const resultBanner  = document.getElementById('result-banner');
+  const log           = document.getElementById('log');
+  const statusDot     = document.getElementById('status-dot');
+  const statusText    = document.getElementById('status-text');
+
+  // ── Logging ──
+  function addLog(msg, role = 'sys') {
+    const now = new Date().toTimeString().slice(0,8);
+    const el = document.createElement('div');
+    el.className = `entry ${role}`;
+    el.innerHTML = `<span class="ts">${now}</span>${msg}`;
+    log.appendChild(el);
+    log.scrollTop = log.scrollHeight;
+  }
+
+  // ── WebSocket ──
+  function connect() {
+    const ws = new WebSocket('ws://localhost:8000/ws');
+
+    ws.onopen = () => {
+      statusDot.classList.add('connected');
+      statusText.textContent = 'connected';
+      addLog('Dashboard connected to server', 'sys');
+    };
+
+    ws.onclose = () => {
+      statusDot.classList.remove('connected');
+      statusText.textContent = 'disconnected';
+      addLog('Connection closed — retrying in 3s', 'sys');
+      setTimeout(connect, 3000);
+    };
+
+    ws.onerror = () => addLog('WebSocket error', 'sys');
+
+    ws.onmessage = (e) => {
+      let data;
+      try { data = JSON.parse(e.data); }
+      catch { addLog(`Raw: ${e.data}`, 'sys'); return; }
+
+      const role = (data.role || 'sys').toLowerCase();
+
+      switch (data.type) {
+
+        case 'connected':
+          addLog(`${data.role} connected`, role);
+          break;
+
+        case 'qubit_sent':
+          qubitCount++;
+          statQubits.textContent = qubitCount;
+          if (data.index !== undefined && squares[data.index]) {
+            squares[data.index].className = 'sq sending';
+          }
+          addLog(`Alice → qubit ${data.index ?? qubitCount}: bit=${data.bit} basis=${data.basis === 0 ? '+' : '×'}`, 'alice');
+          break;
+
+        case 'basis_match':
+          if (data.index !== undefined && squares[data.index]) {
+            squares[data.index].className = 'sq match';
+          }
+          break;
+
+        case 'basis_nomatch':
+          if (data.index !== undefined && squares[data.index]) {
+            squares[data.index].className = 'sq nomatch';
+          }
+          break;
+
+        case 'sifting_complete':
+          statSifted.textContent = data.sifted_length;
+          statSiftedPct.textContent = `${data.percentage?.toFixed(1)}% of qubits kept`;
+          addLog(`Sifting complete — ${data.sifted_length} bits kept (${data.percentage?.toFixed(1)}%)`, 'alice');
+          break;
+
+        case 'error_check':
+          const pct = data.error_pct ?? 0;
+          statError.textContent = `${pct.toFixed(2)}%`;
+          statError.className = `card-value ${pct > 11 ? 'red' : 'green'}`;
+          statErrorSub.textContent = `${data.errors} error(s) in ${data.sample_size} sampled bits`;
+          addLog(`Error check: ${data.errors} errors / ${data.sample_size} bits = ${pct.toFixed(2)}%`, 'alice');
+          break;
+
+        case 'result':
+          const safe = data.safe;
+          resultBanner.style.display = 'block';
+          resultBanner.className = safe ? 'safe' : 'compromised';
+          resultBanner.textContent = safe
+            ? '✓  Key exchange successful — channel is secure'
+            : '✗  Too many errors detected — Eve may be present';
+          addLog(resultBanner.textContent, safe ? 'alice' : 'eve');
+          break;
+
+        case 'eve_intercept':
+          addLog(`Eve intercepted qubit ${data.index}: measured as ${data.measured_bit} (basis ${data.eve_basis === 0 ? '+' : '×'})`, 'eve');
+          break;
+
+        default:
+          addLog(`[${data.role ?? '?'}] ${data.type}: ${JSON.stringify(data)}`, role);
+      }
+    };
+  }
+
+  connect();
+</script>
 </body>
 </html>
